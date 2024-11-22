@@ -237,12 +237,12 @@ class Line:
         if self.slope != 0 and self.slope is not None:
             # bresenham's line algorithm
             # first find all the coordinates
-            dx = abs(self.start.x - self.end.x)
-            dy = abs(self.start.y - self.end.y)
-            step_x = 1 if self.start.x < self.end.x else -1
-            step_y = 1 if self.start.y < self.end.y else -1
-            error = dx - dy
-            two_error = 2 * error
+            dx : float = abs(self.start.x - self.end.x)
+            dy : float = abs(self.start.y - self.end.y)
+            step_x : int = 1 if self.start.x < self.end.x else -1
+            step_y : int = 1 if self.start.y < self.end.y else -1
+            error : float = dx - dy if dx > dy else dy - dx
+            is_steep : bool = dy > dx
             coords : list = []
             # no need to check for slope = None because that's already checked for
             x = self.start.x
@@ -250,17 +250,18 @@ class Line:
             while True:
                 for offset in range(-self.radius, self.radius + 1):
                     # whichever integer value of y is close is the one we fill in
-                    y : int = round(self.slope * (x - self.start.x) + self.start.y)
-                    if self.slope > 1:
+                    if is_steep:
                         # if line is more vertical thicken in x direction
                         coords.append(Coordinate(x + offset, y))
                     else: 
                         # otherwise thicken in the y direction
                         coords.append(Coordinate(x, y + offset))
                 
-                if x == self.end.x and y == self.end.y:
+                # check to see if we're at the end of the line
+                if x == self.end.x or y == self.end.y:
                     break
 
+                two_error = 2 * error
                 if two_error > -dy:
                     error -= dy
                     x += step_x
@@ -268,11 +269,12 @@ class Line:
                 if two_error < dx:
                     error += dx
                     y += step_y
-
+                print(f'({x}, {y})')
 
             # draw all the coordinates
             for coord in coords:
                 self.master.draw(coord, self.color)
+
         # if it is just draw a rectangle instead
         else:
             # vertical
