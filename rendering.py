@@ -224,6 +224,7 @@ class Line:
         self.end : Coordinate = end
         self.color : Color = color
         self.width : int = width
+        self.radius : int = width // 2
         try:
             self.slope : float = (self.end.y - self.start.y) / (self.end.x - self.start.x)
         except ZeroDivisionError:
@@ -236,12 +237,38 @@ class Line:
         if self.slope != 0 and self.slope is not None:
             # bresenham's line algorithm
             # first find all the coordinates
+            dx = abs(self.start.x - self.end.x)
+            dy = abs(self.start.y - self.end.y)
+            step_x = 1 if self.start.x < self.end.x else -1
+            step_y = 1 if self.start.y < self.end.y else -1
+            error = dx - dy
+            two_error = 2 * error
             coords : list = []
             # no need to check for slope = None because that's already checked for
-            for x in range(self.start.x, self.end.x + 1):
-                # whichever integer value of y is close is the one we fill in
-                y : int = round(self.slope * (x - self.start.x) + self.start.y)
-                coords.append(Coordinate(x, y))
+            x = self.start.x
+            y = self.start.y
+            while True:
+                for offset in range(-self.radius, self.radius + 1):
+                    # whichever integer value of y is close is the one we fill in
+                    y : int = round(self.slope * (x - self.start.x) + self.start.y)
+                    if self.slope > 1:
+                        # if line is more vertical thicken in x direction
+                        coords.append(Coordinate(x + offset, y))
+                    else: 
+                        # otherwise thicken in the y direction
+                        coords.append(Coordinate(x, y + offset))
+                
+                if x == self.end.x and y == self.end.y:
+                    break
+
+                if two_error > -dy:
+                    error -= dy
+                    x += step_x
+
+                if two_error < dx:
+                    error += dx
+                    y += step_y
+
 
             # draw all the coordinates
             for coord in coords:
