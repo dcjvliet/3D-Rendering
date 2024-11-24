@@ -310,8 +310,16 @@ class Line:
     def undisplay(self) -> None:
         """Clear the line from the screen
         """
-        for coord in self.coords:
-            self.master.draw(coord, Color((255, 255, 255)))
+        try:
+            for coord in self.coords:
+                self.master.draw(coord, Color((255, 255, 255)))
+        # in case it's a vertical/horizontal line
+        except AttributeError:
+            if self.slope is None:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, Color((255, 255, 255)))
+            else:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, Color((255, 255, 255)))
+
 
     def rotate(self, theta : float, radians : bool = True, keep_original : bool = False, center : str = 'center') -> None:
         """Rotate the line by a given angle
@@ -447,6 +455,57 @@ class Rect:
 
     def change_fill(self) -> None:
         self.fill = not self.fill
+
+    def rotate(self, theta : float, radians : bool = True, keep_original : bool = False) -> None:
+        # convert to radians if it's in degrees
+        if not radians:
+            theta *= math.pi / 180
+
+        rotation_matrix : list = [
+            [math.cos(theta), -math.sin(theta)], 
+            [math.sin(theta), math.cos(theta)]]
+        
+        # translate vertices to the origin
+        translation_x : float = self.top_left.x + self.width // 2
+        translation_y : float = self.top_left.y + self.height // 2
+
+        # define our vertices centered around the origin
+        top_left_matrix : list = [[self.top_left.x - translation_x], [self.top_left.y - translation_y]]
+        top_right_matrix : list = [[self.top_right.x - translation_x], [self.top_right.y - translation_y]]
+        bottom_left_matrix : list = [[self.bottom_left.x - translation_x], [self.bottom_left.y - translation_y]]
+        bottom_right_matrix : list = [[self.bottom_right.x - translation_x], [self.bottom_right.y - translation_y]]
+
+        # rotate all of the vertices then shift them back
+        temp : list = matrix_multiplication(rotation_matrix, top_left_matrix)
+        self.top_left = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
+
+        temp : list = matrix_multiplication(rotation_matrix, top_right_matrix)
+        self.top_right = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
+
+        temp : list = matrix_multiplication(rotation_matrix, bottom_left_matrix)
+        self.bottom_left = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
+
+        temp : list = matrix_multiplication(rotation_matrix, bottom_right_matrix)
+        self.bottom_right = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
+
+        # remove original rectangle if needed
+        if not keep_original:
+            self.top_edge.undisplay()
+            self.bottom_edge.undisplay()
+            self.left_edge.undisplay()
+            self.right_edge.undisplay()
+
+        # redefine edges with new coordinates
+        self.top_edge : Line = Line(self.master, self.top_left, self.top_right, self.border_color, self.borderwidth, self.antialiasing)
+        self.bottom_edge : Line = Line(self.master, self.bottom_left, self.bottom_right, self.border_color, self.borderwidth, self.antialiasing)
+        self.left_edge : Line = Line(self.master, self.top_left, self.bottom_left, self.border_color, self.borderwidth, self.antialiasing)
+        self.right_edge : Line = Line(self.master, self.top_right, self.bottom_right, self.border_color, self.borderwidth, self.antialiasing)
+
+        # redisplay rectangle
+        self.top_edge.display()
+        self.bottom_edge.display()
+        self.left_edge.display()
+        self.right_edge.display()
 
     def __str__(self) -> str:
         """Converts the rectangle to a readable format
