@@ -57,43 +57,6 @@ class NoValidHandle(CustomError):
     pass
 
 
-class Window:
-    """A window created in C that allows for drawing
-    """
-    def __init__(self, title : str, dimensions : Union[list, tuple]) -> None:
-        """Initialize the window
-
-        :param title: The title of the window
-        :type title: str
-        :param dimensions: The dimensions of the window
-        :type dimensions: Union[list, tuple]
-        :raises NoValidHandle: If a valid window handle couldn't be found
-        """
-        # convert the window title to a char array
-        name_array = (ctypes.c_char * len(title))(*title.encode('utf-8'))
-        window_lib.create_window(name_array, DimensionsArray(dimensions[0], dimensions[1]))
-        self.title : str = title
-        self.hwnd = window_lib.get_hwnd(name_array)
-        if self.hwnd == 0:
-            raise NoValidHandle('No valid window handle could be found')
-
-    def draw(self, coord : 'Coordinate', color : 'Color') -> None:
-        """Color the pixel at the given coordinate with the given color
-
-        :param coord: The coordinate to be colored
-        :type coord: Coordinate
-        :param color: The color of the pixel in rgb(a)
-        :type color: Color
-        """
-        window_lib.draw_pixel(self.hwnd, coord.x, coord.y, color.colorref)
-
-    def mainloop(self) -> None:
-        """Loop to run the window's message loop in C
-        """
-        # start the message loop
-        window_lib.message_loop()
-
-
 class Color:
     """A color that is rgba compatible and can be used as a COLORREF object in C
     """
@@ -185,6 +148,48 @@ class Color:
         :rtype: str
         """
         return f'Color({self.color})'
+    
+
+class Window:
+    """A window created in C that allows for drawing
+    """
+    def __init__(self, title : str, dimensions : Union[list, tuple], background : Color = Color((255, 255, 255))) -> None:
+        """Initialize the window
+
+        :param title: The title of the window
+        :type title: str
+        :param dimensions: The dimensions of the window
+        :type dimensions: Union[list, tuple]
+        :raises NoValidHandle: If a valid window handle couldn't be found
+        """
+        # convert the window title to a char array
+        name_array = (ctypes.c_char * len(title))(*title.encode('utf-8'))
+        window_lib.create_window(name_array, DimensionsArray(dimensions[0], dimensions[1]))
+        self.title : str = title
+        self.width = dimensions[0]
+        self.height = dimensions[1]
+        self.hwnd = window_lib.get_hwnd(name_array)
+        if self.hwnd == 0:
+            raise NoValidHandle('No valid window handle could be found')
+        self.background = background
+        window_lib.fill_rect(self.hwnd, 0, 0, self.width, self.height, self.background.colorref)
+
+    def draw(self, coord : 'Coordinate', color : 'Color') -> None:
+        """Color the pixel at the given coordinate with the given color
+
+        :param coord: The coordinate to be colored
+        :type coord: Coordinate
+        :param color: The color of the pixel in rgb(a)
+        :type color: Color
+        """
+        window_lib.draw_pixel(self.hwnd, coord.x, coord.y, color.colorref)
+
+    def mainloop(self) -> None:
+        """Loop to run the window's message loop in C
+        """
+        # start the message loop
+        window_lib.message_loop()
+
 
 class Coordinate:
     """A representation of a coordinate in 2D space
@@ -316,9 +321,9 @@ class Line:
         # in case it's a vertical/horizontal line
         except AttributeError:
             if self.slope is None:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, Color((255, 255, 255)))
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.master.background.colorref)
             else:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, Color((255, 255, 255)))
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.master.background.colorref)
 
 
     def rotate(self, theta : float, radians : bool = True, keep_original : bool = False, center : str = 'center') -> None:
