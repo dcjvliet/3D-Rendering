@@ -6,7 +6,6 @@ My humble attempt at creating a graphics engine from scratch
 import ctypes
 import math
 from typing import Union
-import time
 
 
 # load in C code for creating a window and drawing on it
@@ -278,7 +277,7 @@ class Line:
         except ZeroDivisionError:
             self.slope : float = None
     
-    def display_c(self) -> None:
+    def display(self) -> None:
         # just use the dll (C for the win (like 2x faster than python))
         result = bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width)
         size = result.size
