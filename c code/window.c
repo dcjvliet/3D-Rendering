@@ -86,3 +86,8 @@ __declspec(dllexport) void fill_rect(HWND hwnd, int x, int y, int width, int hei
     DeleteObject(brush);
     ReleaseDC(hwnd, hdc);
 }
+
+__declspec(dllexport) void kill_window(HWND hwnd)
+{
+    DestroyWindow(hwnd);
+}
