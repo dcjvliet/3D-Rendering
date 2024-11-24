@@ -6,6 +6,7 @@ My humble attempt at creating a graphics engine from scratch
 import ctypes
 import math
 from typing import Union
+import time
 
 
 # load in C code for creating a window and drawing on it
@@ -14,9 +15,22 @@ window_lib.create_window.argtypes = [ctypes.POINTER(ctypes.c_char), ctypes.POINT
 window_lib.get_hwnd.argtypes = [ctypes.POINTER(ctypes.c_char)]
 window_lib.draw_pixel.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
 window_lib.fill_rect.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+window_lib.kill_window.argtypes = [ctypes.c_void_p]
 
 # ctype for creating the dimensions of the window
 DimensionsArray = ctypes.c_int * 2
+
+# loading in the dll for bresenham's algo
+class ArrayPair(ctypes.Structure):
+    _fields_ = [
+        ('x_values', ctypes.POINTER(ctypes.c_int)),
+        ('y_values', ctypes.POINTER(ctypes.c_int)),
+        ('size', ctypes.c_int)
+    ]
+
+bresenham = ctypes.CDLL('./dlls/bresenham.dll')
+bresenham.bresenham.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_int]
+bresenham.bresenham.restype = ArrayPair
 
 def matrix_multiplication(matrix_one : Union[list, tuple], matrix_two : Union[list, tuple]) -> list:
     """Returns the multiplication of two matrices
@@ -190,6 +204,9 @@ class Window:
         # start the message loop
         window_lib.message_loop()
 
+    def kill(self) -> None:
+        window_lib.kill_window(self.hwnd)
+
 
 class Coordinate:
     """A representation of a coordinate in 2D space
@@ -258,59 +275,16 @@ class Line:
             self.slope : float = (self.end.y - self.start.y) / (self.end.x - self.start.x)
         except ZeroDivisionError:
             self.slope : float = None
+    
+    def display_c(self) -> None:
+        # just use the dll (C for the win (like 2x faster than python))
+        result = bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width)
+        size = result.size
+        x_values = result.x_values[:size]
+        y_values = result.y_values[:size]
 
-    def display(self) -> None:
-        """Draw the line on it's master
-        """
-        # check to see if the line is vertical or horizontal
-        if self.slope != 0 and self.slope is not None:
-            # bresenham's line algorithm
-            # first find all the coordinates
-            dx : float = abs(self.start.x - self.end.x)
-            dy : float = abs(self.start.y - self.end.y)
-            step_x : int = 1 if self.start.x < self.end.x else -1
-            step_y : int = 1 if self.start.y < self.end.y else -1
-            error : float = dx - dy if dx > dy else dy - dx
-            is_steep : bool = dy > dx
-            self.coords : list = []
-            # no need to check for slope = None because that's already checked for
-            x = self.start.x
-            y = self.start.y
-            while True:
-                for offset in range(-self.radius, self.radius + 1):
-                    # whichever integer value of y is close is the one we fill in
-                    if is_steep:
-                        # if line is more vertical thicken in x direction
-                        self.coords.append(Coordinate(x + offset, y))
-                    else: 
-                        # otherwise thicken in the y direction
-                        self.coords.append(Coordinate(x, y + offset))
-                
-                # check to see if we're at the end of the line
-                if x == self.end.x or y == self.end.y:
-                    break
-
-                two_error = 2 * error
-                if two_error > -dy:
-                    error -= dy
-                    x += step_x
-
-                if two_error < dx:
-                    error += dx
-                    y += step_y
-
-            # draw all the coordinates
-            for coord in self.coords:
-                self.master.draw(coord, self.color)
-
-        # if it is just draw a rectangle instead
-        else:
-            # vertical
-            if self.slope is None:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorref)
-            # horizontal
-            else:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
+        for x_value, y_value in zip(x_values, y_values):
+            self.master.draw(Coordinate(x_value, y_value), self.color)
 
     def undisplay(self) -> None:
         """Clear the line from the screen
@@ -570,5 +544,4 @@ class Circle:
         :return: A readable format of the circle
         :rtype: str
         """
-        return f'Circle({self.radius}, {self.center})
-        '
+        return f'Circle({self.radius}, {self.center})'
