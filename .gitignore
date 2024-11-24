@@ -1,2 +1,4 @@
 *.txt
 test.py
+.vscode/
+__pycache__/
