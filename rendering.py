@@ -310,7 +310,10 @@ class Line:
             else:
                 window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
 
-    def rotate(self, theta : float) -> None:
+    def rotate(self, theta : float, radians : bool = True) -> None:
+        if not radians:
+            theta *= math.pi / 180
+            
         rotation_matrix : list = [
             [math.cos(theta), -math.sin(theta)], 
             [math.sin(theta), math.cos(theta)]]
