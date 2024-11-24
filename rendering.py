@@ -18,6 +18,33 @@ window_lib.fill_rect.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ct
 # ctype for creating the dimensions of the window
 DimensionsArray = ctypes.c_int * 2
 
+def matrix_multiplication(matrix_one : Union[list, tuple], matrix_two : Union[list, tuple]) -> list:
+    """Returns the multiplication of two matrices
+
+    :param matrix_one: The first matrix
+    :type matrix_one: Union[list, tuple]
+    :param matrix_two: The second matrix
+    :type matrix_two: Union[list, tuple]
+    :raises ValueError: If the matrix dimensions are not valid
+    :return: The multiplied matrices
+    :rtype: tuple
+    """
+    # if columns doesn't equal rows
+    if len(matrix_one[0]) != len(matrix_two):
+        raise ValueError('Incompatible matrix dimensions')
+    
+    # Initialize the result matrix with zeros
+    result = [[0 for _ in range(len(matrix_two[0]))] for _ in range(len(matrix_one))]
+    
+    # Perform multiplication
+    for i in range(len(matrix_one)):  # Rows of the first matrix
+        for j in range(len(matrix_two[0])):  # Columns of the second matrix
+            for k in range(len(matrix_two)):  # Elements in the shared dimension
+                result[i][j] += matrix_one[i][k] * matrix_two[k][j]
+    
+    return result
+
+
 class CustomError(Exception):
     """Base class for custom exceptions
     """
@@ -269,7 +296,6 @@ class Line:
                 if two_error < dx:
                     error += dx
                     y += step_y
-                print(f'({x}, {y})')
 
             # draw all the coordinates
             for coord in coords:
@@ -279,14 +305,33 @@ class Line:
         else:
             # vertical
             if self.slope is None:
-                #print('vertical')
                 window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorref)
             # horizontal
             else:
-                #print('horizontal')
                 window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
 
+    def rotate(self, theta : float) -> None:
+        rotation_matrix : list = [
+            [math.cos(theta), -math.sin(theta)], 
+            [math.sin(theta), math.cos(theta)]]
+        
+        # translate line to origin to be rotated
+        translation_x : float = (self.end.x - self.start.x) / 2
+        translation_y : float = (self.end.y - self.start.y) / 2
 
+        # apply translation
+        start_matrix : list = [[self.start.x - translation_x], [self.start.y - translation_y]]
+        end_matrix : list = [[self.end.x- translation_x], [self.end.y - translation_y]]
+
+        # do rotation and revert translation
+        temp : list = matrix_multiplication(rotation_matrix, start_matrix)
+        self.start = Coordinate(int(temp[0][0] + translation_x + self.end.x), int(temp[1][0] + translation_y))
+
+        temp = matrix_multiplication(rotation_matrix, end_matrix)
+        self.end = Coordinate(int(temp[0][0] + translation_x + self.end.x), int(temp[1][0]+ translation_y))
+
+        self.display()
+        
     def __str__(self) -> str:
         """Converts the line to a readable format
 
