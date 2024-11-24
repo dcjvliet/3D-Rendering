@@ -196,10 +196,7 @@ class Coordinate:
         :type x: float
         :param y: The y-coordinate of the coordinate
         :type y: float
-        :raises ValueError: If x or y isn't positive
         """
-        if x < 0 or y < 0:
-            raise ValueError('x and y must be positive')
         
         self.x : float = x
         self.y : float = y
@@ -270,7 +267,7 @@ class Line:
             step_y : int = 1 if self.start.y < self.end.y else -1
             error : float = dx - dy if dx > dy else dy - dx
             is_steep : bool = dy > dx
-            coords : list = []
+            self.coords : list = []
             # no need to check for slope = None because that's already checked for
             x = self.start.x
             y = self.start.y
@@ -279,10 +276,10 @@ class Line:
                     # whichever integer value of y is close is the one we fill in
                     if is_steep:
                         # if line is more vertical thicken in x direction
-                        coords.append(Coordinate(x + offset, y))
+                        self.coords.append(Coordinate(x + offset, y))
                     else: 
                         # otherwise thicken in the y direction
-                        coords.append(Coordinate(x, y + offset))
+                        self.coords.append(Coordinate(x, y + offset))
                 
                 # check to see if we're at the end of the line
                 if x == self.end.x or y == self.end.y:
@@ -298,7 +295,7 @@ class Line:
                     y += step_y
 
             # draw all the coordinates
-            for coord in coords:
+            for coord in self.coords:
                 self.master.draw(coord, self.color)
 
         # if it is just draw a rectangle instead
@@ -310,7 +307,25 @@ class Line:
             else:
                 window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
 
-    def rotate(self, theta : float, radians : bool = True) -> None:
+    def undisplay(self) -> None:
+        """Clear the line from the screen
+        """
+        for coord in self.coords:
+            self.master.draw(coord, Color((255, 255, 255)))
+
+    def rotate(self, theta : float, radians : bool = True, keep_original : bool = False, center : str = 'center') -> None:
+        """Rotate the line by a given angle
+
+        :param theta: The angle to rotate by
+        :type theta: float
+        :param radians: Whether or not the given angle is in radians, defaults to True
+        :type radians: bool, optional
+        :param keep_original: Whether or not to keep the original line, defaults to False
+        :type keep_original: bool, optional
+        :param center: Where to rotate the line about (center, left, right), defaults to 'center'
+        :type center: str, optional
+        :raises ValueError: If the center of rotation is not either of the endpoints or the center of the line
+        """
         if not radians:
             theta *= math.pi / 180
 
@@ -319,9 +334,17 @@ class Line:
             [math.sin(theta), math.cos(theta)]]
         
         # translate line to origin to be rotated
-        translation_x : float = (self.end.x - self.start.x) / 2 + self.start.x
-        translation_y : float = (self.end.y - self.start.y) / 2 + self.start.y
-        print(translation_x, translation_y)
+        if center == 'center':
+            translation_x : float = (self.end.x - self.start.x) / 2 + self.start.x
+            translation_y : float = (self.end.y - self.start.y) / 2 + self.start.y
+        elif center == 'left':
+            translation_x : float = self.start.x
+            translation_y : float = self.start.y
+        elif center == 'right':
+            translation_x : float = self.end.x
+            translation_y : float = self.end.y
+        else:
+            raise ValueError(f'{center} is not a recognized rotation point')
 
         # apply translation
         start_matrix : list = [[self.start.x - translation_x], [self.start.y - translation_y]]
@@ -333,6 +356,9 @@ class Line:
 
         temp = matrix_multiplication(rotation_matrix, end_matrix)
         self.end = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0]+ translation_y))
+
+        if not keep_original:
+            self.undisplay()
 
         self.display()
         
