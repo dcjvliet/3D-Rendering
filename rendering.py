@@ -313,14 +313,15 @@ class Line:
     def rotate(self, theta : float, radians : bool = True) -> None:
         if not radians:
             theta *= math.pi / 180
-            
+
         rotation_matrix : list = [
             [math.cos(theta), -math.sin(theta)], 
             [math.sin(theta), math.cos(theta)]]
         
         # translate line to origin to be rotated
-        translation_x : float = (self.end.x - self.start.x) / 2
-        translation_y : float = (self.end.y - self.start.y) / 2
+        translation_x : float = (self.end.x - self.start.x) / 2 + self.start.x
+        translation_y : float = (self.end.y - self.start.y) / 2 + self.start.y
+        print(translation_x, translation_y)
 
         # apply translation
         start_matrix : list = [[self.start.x - translation_x], [self.start.y - translation_y]]
@@ -328,10 +329,10 @@ class Line:
 
         # do rotation and revert translation
         temp : list = matrix_multiplication(rotation_matrix, start_matrix)
-        self.start = Coordinate(int(temp[0][0] + translation_x + self.end.x), int(temp[1][0] + translation_y))
+        self.start = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
 
         temp = matrix_multiplication(rotation_matrix, end_matrix)
-        self.end = Coordinate(int(temp[0][0] + translation_x + self.end.x), int(temp[1][0]+ translation_y))
+        self.end = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0]+ translation_y))
 
         self.display()
         
