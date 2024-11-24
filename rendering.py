@@ -205,6 +205,8 @@ class Window:
         window_lib.message_loop()
 
     def kill(self) -> None:
+        """Method to kill the window
+        """
         window_lib.kill_window(self.hwnd)
 
 
