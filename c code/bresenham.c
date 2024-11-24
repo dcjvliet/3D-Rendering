@@ -10,30 +10,13 @@ typedef struct
 
 __declspec(dllexport) ArrayPair bresenham(float start_x, float start_y, float end_x, float end_y, int thickness)
 {
-    float dx, dy, step_x, step_y;
     // define our dx, dy, and steps
-    if (end_x > start_x)
-    {
-        dx = end_x - start_x;
-        step_x = 1;
-    }
-    else
-    {
-        dx = start_x - end_x;
-        step_x = -1;
-    }
-    if (end_y > start_y)
-    {
-        dy = end_y - start_y;
-        step_y = 1;
-    }
-    else
-    {
-        dy = start_y - end_y;
-        step_y = -1;
-    }
+    int dx = abs(end_x - start_x);
+    int dy = abs(end_y - start_y);
+    int step_x = (end_x > start_x) ? 1 : -1;
+    int step_y = (end_y > start_y) ? 1 : -1;
 
-    float error;
+    int error;
     bool steep;
     // define our error from the line
     if (dx > dy)
@@ -53,7 +36,7 @@ __declspec(dllexport) ArrayPair bresenham(float start_x, float start_y, float en
     int radius = thickness / 2;
 
     // inital size of x and y values
-    int capacity = 2;
+    int capacity = (dx + 1) * thickness; // estimate of amount of space needed
     int size = 0;
 
     int *x_values = malloc(capacity * sizeof(int));
