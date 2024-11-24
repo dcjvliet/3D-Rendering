@@ -519,3 +519,56 @@ class Rect:
         :rtype: str
         """
         return f'Rect({self.top_left}, {self.width}, {self.height})'
+
+
+class Circle:
+    """A circle that can be drawn on a window with antialiasing capabilities
+    """
+    def __init__(self, master : Window, radius : int, center : Coordinate, border_color : Color = Color((0, 0, 0)), borderwidth : int = 1, fill : bool = False, fill_color : Color = Color((0, 0, 0)), antialiasing : bool = False) -> None:
+        """Initialize the circle
+
+        :param master: The circle's master window
+        :type master: Window
+        :param radius: The radius of the circle
+        :type radius: int
+        :param center: The center coordinate of the circle
+        :type center: Coordinate
+        :param border_color: The color of the border of the circle, defaults to Color((0, 0, 0))
+        :type border_color: Color, optional
+        :param borderwidth: The thickness of the circle's border, defaults to 1
+        :type borderwidth: int, optional
+        :param fill: Whether or not to fill the circle, defaults to False
+        :type fill: bool, optional
+        :param fill_color: The fill color of the circle, defaults to Color((0, 0, 0))
+        :type fill_color: Color, optional
+        :param antialiasing: Whether or not the circle should be antialiased, defaults to False
+        :type antialiasing: bool, optional
+        :raises ValueError: If radius is not a positive integer
+        :raises ValueError: If borderwidth is not a positive integer
+        """
+        if radius <= 0 or not isinstance(radius, int):
+            raise ValueError('radius must be a positive integer')
+
+        if borderwidth <= 0 or not isinstance(borderwidth, int):
+            raise ValueError('borderwidth must be a positive integer')
+
+        self.master : Window = master
+        self.radius : int = radius
+        self.center : Coordinate = center
+        self.border_color : Color = border_color
+        self.borderwidth : int = borderwidth
+        self.fill : bool = fill
+
+    def change_fill(self) -> None:
+        """Change the fill of the circle
+        """
+        self.fill = not self.fill
+
+    def __str__(self) -> str:
+        """Converts the circle to a readable format
+
+        :return: A readable format of the circle
+        :rtype: str
+        """
+        return f'Circle({self.radius}, {self.center})
+        '
