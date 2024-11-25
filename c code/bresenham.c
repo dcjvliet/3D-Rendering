@@ -8,7 +8,7 @@ void draw_pixel(HWND hwnd, int x, int y, COLORREF color)
     ReleaseDC(hwnd, hdc);
 }
 
-__declspec(dllexport) void bresenham(float start_x, float start_y, float end_x, float end_y, int thickness, HWND hwnd, COLORREF color)
+__declspec(dllexport) void bresenham(int start_x, int start_y, int end_x, int end_y, int thickness, HWND hwnd, COLORREF color)
 {
     // define our dx, dy, and steps
     int dx = abs(end_x - start_x);
