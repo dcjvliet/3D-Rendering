@@ -21,7 +21,11 @@ DimensionsArray = ctypes.c_int * 2
 
 # loading in the dll for bresenham's algo
 bresenham = ctypes.CDLL('./dlls/bresenham.dll')
-bresenham.bresenham.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+bresenham.bresenham.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+
+# loading in the dll for midpoint circle algo
+midpoint_circle = ctypes.CDLL('./dlls/midpoint.dll')
+midpoint_circle.midpoint_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
 def matrix_multiplication(matrix_one : Union[list, tuple], matrix_two : Union[list, tuple]) -> list:
     """Returns the multiplication of two matrices
@@ -204,14 +208,16 @@ class Window:
 class Coordinate:
     """A representation of a coordinate in 2D space
     """
-    def __init__(self, x : float, y : float) -> None:
+    def __init__(self, x : int, y : int) -> None:
         """Initialize the coordinate
 
         :param x: The x-coordinate of the coordinate
-        :type x: float
+        :type x: int
         :param y: The y-coordinate of the coordinate
-        :type y: float
+        :type y: int
         """
+        if not isinstance(x, int) or not isinstance(y, int):
+            raise ValueError('x and y must be integers')
         
         self.x : float = x
         self.y : float = y
@@ -277,8 +283,7 @@ class Line:
         """Clear the line from the screen
         """
         try:
-            for coord in self.coords:
-                self.master.draw(coord, Color((255, 255, 255)))
+            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.master.background.colorref)
         # in case it's a vertical/horizontal line
         except AttributeError:
             if self.slope is None:
@@ -300,6 +305,10 @@ class Line:
         :type center: str, optional
         :raises ValueError: If the center of rotation is not either of the endpoints or the center of the line
         """
+        # get rid of original if needed
+        if not keep_original:
+            self.undisplay()
+            
         if not radians:
             theta *= math.pi / 180
 
@@ -330,9 +339,6 @@ class Line:
 
         temp = matrix_multiplication(rotation_matrix, end_matrix)
         self.end = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0]+ translation_y))
-
-        if not keep_original:
-            self.undisplay()
 
         self.display()
         
@@ -519,6 +525,9 @@ class Circle:
         self.border_color : Color = border_color
         self.borderwidth : int = borderwidth
         self.fill : bool = fill
+
+    def display(self) -> None:
+        midpoint_circle.midpoint_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.border_color.colorref)
 
     def change_fill(self) -> None:
         """Change the fill of the circle
