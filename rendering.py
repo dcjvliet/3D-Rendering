@@ -27,16 +27,16 @@ bresenham.bresenham.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes
 midpoint_circle = ctypes.CDLL('./dlls/midpoint.dll')
 midpoint_circle.midpoint_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
-def matrix_multiplication(matrix_one : Union[list, tuple], matrix_two : Union[list, tuple]) -> list:
+def matrix_multiplication(matrix_one : Union[list[float], tuple[float]], matrix_two : Union[list[float], tuple[float]]) -> list[float]:
     """Returns the multiplication of two matrices
 
     :param matrix_one: The first matrix
-    :type matrix_one: Union[list, tuple]
+    :type matrix_one: Union[list[float], tuple[float]]
     :param matrix_two: The second matrix
-    :type matrix_two: Union[list, tuple]
+    :type matrix_two: Union[list[float], tuple[float]]
     :raises ValueError: If the matrix dimensions are not valid
     :return: The multiplied matrices
-    :rtype: tuple
+    :rtype: list[float]
     """
     # if columns doesn't equal rows
     if len(matrix_one[0]) != len(matrix_two):
@@ -69,11 +69,11 @@ class NoValidHandle(CustomError):
 class Color:
     """A color that is rgba compatible and can be used as a COLORREF object in C
     """
-    def __init__(self, color : Union[tuple, list]) -> None:
+    def __init__(self, color : Union[tuple[int], list[int]]) -> None:
         """Initialize the color
 
         :param color: A tuple containing rgb(a) values
-        :type color: Union[tuple, list]
+        :type color: Union[tuple[int], list[int]]
         :raises ValueError: If too many arguments are passed in the color parameter
         :raises ValueError: If the rgb(a) values are too large or too small
         """
@@ -148,7 +148,10 @@ class Color:
         :rtype: ctypes.c_uint32
         """
         # return an unsigned integer using some bit shifting
-        return ctypes.c_uint32((b << 16) | (g << 8) | r)
+        if a is None:
+            return ctypes.c_uint32((b << 16) | (g << 8) | r)
+        else:
+            return ctypes.c_uint32((b << 24) | (g << 16) | (r << 8) | a)
 
     def __str__(self) -> str:
         """Converts color to readable format to be printed
@@ -162,13 +165,13 @@ class Color:
 class Window:
     """A window created in C that allows for drawing
     """
-    def __init__(self, title : str, dimensions : Union[list, tuple], background : Color = Color((255, 255, 255))) -> None:
+    def __init__(self, title : str, dimensions : Union[list[int], tuple[int]], background : Color = Color((255, 255, 255))) -> None:
         """Initialize the window
 
         :param title: The title of the window
         :type title: str
         :param dimensions: The dimensions of the window
-        :type dimensions: Union[list, tuple]
+        :type dimensions: Union[list[int], tuple[int]]
         :raises NoValidHandle: If a valid window handle couldn't be found
         """
         # convert the window title to a char array
