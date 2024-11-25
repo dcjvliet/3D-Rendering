@@ -1,14 +1,14 @@
 #include <stdbool.h>
-#include <stdlib.h>
+#include <windows.h>
 
-typedef struct
+void draw_pixel(HWND hwnd, int x, int y, COLORREF color)
 {
-    int *x_values;
-    int *y_values;
-    int size;
-} ArrayPair;
+    HDC hdc = GetDC(hwnd);
+    SetPixel(hdc, x, y, color);
+    ReleaseDC(hwnd, hdc);
+}
 
-__declspec(dllexport) ArrayPair bresenham(float start_x, float start_y, float end_x, float end_y, int thickness)
+__declspec(dllexport) void bresenham(float start_x, float start_y, float end_x, float end_y, int thickness, HWND hwnd, COLORREF color)
 {
     // define our dx, dy, and steps
     int dx = abs(end_x - start_x);
@@ -35,36 +35,23 @@ __declspec(dllexport) ArrayPair bresenham(float start_x, float start_y, float en
     int y = start_y;
     int radius = thickness / 2;
 
-    // inital size of x and y values
-    int capacity = (dx + 1) * thickness; // estimate of amount of space needed
-    int size = 0;
-
-    int *x_values = malloc(capacity * sizeof(int));
-    int *y_values = malloc(capacity * sizeof(int));
-
     while (true)
     {
         for (int i = -radius; i <= radius; ++i)
         {
-            // increase memory allocation if necessary
-            if (size == capacity)
-            {
-                capacity *= 2;
-                x_values = realloc(x_values, capacity * sizeof(int));
-                y_values = realloc(y_values, capacity * sizeof(int));
-            }
-
             if (steep)
             {
-                x_values[size] = x + i;
-                y_values[size] = y;
-                size++;
+                draw_pixel(hwnd, x + i, y, color);
+                // x_values[size] = x + i;
+                // y_values[size] = y;
+                // size++;
             }
             else
             {
-                x_values[size] = x;
-                y_values[size] = y + i;
-                size++;
+                draw_pixel(hwnd, x, y + i, color);
+                // x_values[size] = x;
+                // y_values[size] = y + i;
+                // size++;
             }
         }
 
@@ -85,6 +72,4 @@ __declspec(dllexport) ArrayPair bresenham(float start_x, float start_y, float en
             y += step_y;
         }
     }
-    ArrayPair result = {x_values, y_values, size};
-    return result;
 }

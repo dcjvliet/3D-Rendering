@@ -20,16 +20,8 @@ window_lib.kill_window.argtypes = [ctypes.c_void_p]
 DimensionsArray = ctypes.c_int * 2
 
 # loading in the dll for bresenham's algo
-class ArrayPair(ctypes.Structure):
-    _fields_ = [
-        ('x_values', ctypes.POINTER(ctypes.c_int)),
-        ('y_values', ctypes.POINTER(ctypes.c_int)),
-        ('size', ctypes.c_int)
-    ]
-
 bresenham = ctypes.CDLL('./dlls/bresenham.dll')
-bresenham.bresenham.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_int]
-bresenham.bresenham.restype = ArrayPair
+bresenham.bresenham.argtypes = [ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_float, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
 def matrix_multiplication(matrix_one : Union[list, tuple], matrix_two : Union[list, tuple]) -> list:
     """Returns the multiplication of two matrices
@@ -279,13 +271,7 @@ class Line:
     
     def display(self) -> None:
         # just use the dll (C for the win (like 2x faster than python))
-        result = bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width)
-        size = result.size
-        x_values = result.x_values[:size]
-        y_values = result.y_values[:size]
-
-        for x_value, y_value in zip(x_values, y_values):
-            self.master.draw(Coordinate(x_value, y_value), self.color)
+        bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorref)
 
     def undisplay(self) -> None:
         """Clear the line from the screen
