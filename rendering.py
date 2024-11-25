@@ -276,21 +276,27 @@ class Line:
             self.slope : float = None
     
     def display(self) -> None:
+        """Display the line on it's master
+        """
         # just use the dll (C for the win (like 2x faster than python))
-        bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorref)
+        if self.slope is not None and self.slope != 0:
+            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorref)
+        # if horizontal or vertical
+        elif self.slope == 0:
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
+        else:
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorref)
 
     def undisplay(self) -> None:
-        """Clear the line from the screen
+        """Clear the line from its master
         """
-        try:
+        if self.slope is not None and self.slope != 0:
             bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.master.background.colorref)
         # in case it's a vertical/horizontal line
-        except AttributeError:
-            if self.slope is None:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.master.background.colorref)
-            else:
-                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.master.background.colorref)
-
+        elif self.slope == 0:
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.master.background.colorref)
+        else:
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.master.background.colorref)
 
     def rotate(self, theta : float, radians : bool = True, keep_original : bool = False, center : str = 'center') -> None:
         """Rotate the line by a given angle
@@ -433,6 +439,15 @@ class Rect:
         if not radians:
             theta *= math.pi / 180
 
+        # remove original rectangle if needed
+        if not keep_original:
+            self.top_edge.undisplay()
+            self.bottom_edge.undisplay()
+            self.left_edge.undisplay()
+            self.right_edge.undisplay()
+            # also have to remove bottom right corner
+            window_lib.fill_rect(self.master.hwnd, self.bottom_right.x, self.bottom_right.y, self.borderwidth, self.borderwidth, self.master.background.colorref)
+            
         rotation_matrix : list = [
             [math.cos(theta), -math.sin(theta)], 
             [math.sin(theta), math.cos(theta)]]
@@ -459,13 +474,6 @@ class Rect:
 
         temp : list = matrix_multiplication(rotation_matrix, bottom_right_matrix)
         self.bottom_right = Coordinate(int(temp[0][0] + translation_x), int(temp[1][0] + translation_y))
-
-        # remove original rectangle if needed
-        if not keep_original:
-            self.top_edge.undisplay()
-            self.bottom_edge.undisplay()
-            self.left_edge.undisplay()
-            self.right_edge.undisplay()
 
         # redefine edges with new coordinates
         self.top_edge : Line = Line(self.master, self.top_left, self.top_right, self.border_color, self.borderwidth, self.antialiasing)
