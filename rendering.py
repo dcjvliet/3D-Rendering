@@ -24,6 +24,7 @@ DimensionsArray = ctypes.c_int * 2
 # loading in the dll for bresenham's algo
 bresenham = ctypes.CDLL('./dlls/bresenham.dll')
 bresenham.bresenham.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+bresenham.wu_line.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
 # loading in the dll for midpoint circle algo
 midpoint_circle = ctypes.CDLL('./dlls/midpoint.dll')
@@ -244,7 +245,7 @@ class Coordinate:
 class Line:
     """A line that can be drawn on a window with antialiasing capabilities
     """
-    def __init__(self, master : Window, start : Coordinate, end : Coordinate, color : Color = Color((0, 0, 0)), width : int = 1, antialias : bool = False) -> None:
+    def __init__(self, master : Window, start : Coordinate, end : Coordinate, color : Color = Color((0, 0, 0)), width : int = 1, antialiasing : bool = False) -> None:
         """Initialize the line
 
         :param master: The master window of the line
@@ -270,6 +271,7 @@ class Line:
         self.color : Color = color
         self.width : int = width
         self.radius : int = width // 2
+        self.antialiasing : bool = antialiasing
         try:
             self.slope : float = (self.end.y - self.start.y) / (self.end.x - self.start.x)
         except ZeroDivisionError:
@@ -279,13 +281,23 @@ class Line:
         """Display the line on it's master
         """
         # just use the dll (C for the win (like 2x faster than python))
-        if self.slope is not None and self.slope != 0:
-            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorint)
-        # if horizontal or vertical
-        elif self.slope == 0:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorint)
+        if not self.antialiasing:
+            if self.slope is not None and self.slope != 0:
+                bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorint)
+            # if horizontal or vertical
+            elif self.slope == 0:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorint)
+            else:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorint)
         else:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorint)
+            if self.slope is not None and self.slope != 0:
+                bresenham.wu_line(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorint)
+            # if horizontal or vertical
+            elif self.slope == 0:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorint)
+            else:
+                window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorint)
+
 
     def undisplay(self) -> None:
         """Clear the line from its master
@@ -535,6 +547,7 @@ class Circle:
         self.borderwidth : int = borderwidth
         self.fill : bool = fill
         self.fill_color : Color = fill_color
+        self.antialiasing : bool = antialiasing
 
     def display(self) -> None:
         """Display the circle on its master
