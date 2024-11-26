@@ -1,31 +1,86 @@
 #include <windows.h>
 #include <math.h>
+#include <stdint.h>
 
-void draw_pixel(HWND hwnd, int x, int y, COLORREF color)
+void fill_area(uint32_t *pixels, HWND hwnd)
 {
+    // get window dimensions
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+
     HDC hdc = GetDC(hwnd);
-    SetPixel(hdc, x, y, color);
+    HDC memDC = CreateCompatibleDC(hdc);
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void *pBits = NULL;
+    HBITMAP hBitmap = CreateDIBSection(memDC, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+    HBITMAP oldMap = (HBITMAP)SelectObject(memDC, hBitmap);
+
+    memcpy(pBits, pixels, width * height * sizeof(uint32_t));
+
+    // paint bitmap onto window
+    BLENDFUNCTION blend = {0};
+    blend.BlendOp = AC_SRC_OVER;
+    blend.BlendFlags = 0;
+    blend.SourceConstantAlpha = 255;
+    blend.AlphaFormat = AC_SRC_ALPHA;
+
+    AlphaBlend(hdc, 0, 0, width, height, memDC, 0, 0, width, height, blend);
+
+    // cleanup
+    SelectObject(memDC, oldMap);
+    DeleteObject(hBitmap);
+    DeleteDC(memDC);
     ReleaseDC(hwnd, hdc);
 }
 
-void horizontal_line(int start_x, int end_x, int y, HWND hwnd, COLORREF color)
+void horizontal_line(int start_x, int end_x, int y, HWND hwnd, uint32_t color)
 {
-    for (int x = start_x; x <= end_x; x++)
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+
+    for (int x = start_x; x < end_x; x++)
     {
-        draw_pixel(hwnd, x, y, color);
+        pixels[y * width + x] = color;
     }
+    fill_area(pixels, hwnd);
 }
 
-void vertical_line(int x, int start_y, int end_y, HWND hwnd, COLORREF color)
+void vertical_line(int x, int start_y, int end_y, HWND hwnd, uint32_t color)
 {
-    for (int y = start_y; y <= end_y; y++)
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+
+    for (int y = start_y; y < end_y; y++)
     {
-        draw_pixel(hwnd, x, y, color);
+        pixels[y * width + x] = color;
     }
+    fill_area(pixels, hwnd);
 }
 
-__declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, COLORREF color)
+__declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, uint32_t color)
 {
+    thickness++;
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+
     if (thickness == 1)
     {
         // starting values for x and y
@@ -49,16 +104,26 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
                 determination += 8 * (x + y) + 4;
             }
 
-            draw_pixel(hwnd, center_x + x, center_y + y, color);
-            draw_pixel(hwnd, center_x - x, center_y + y, color);
-            draw_pixel(hwnd, center_x + x, center_y - y, color);
-            draw_pixel(hwnd, center_x - x, center_y - y, color);
-            draw_pixel(hwnd, center_x + y, center_y + x, color);
-            draw_pixel(hwnd, center_x - y, center_y + x, color);
-            draw_pixel(hwnd, center_x + y, center_y - x, color);
-            draw_pixel(hwnd, center_x - y, center_y - x, color);
+            // draw_pixel(hwnd, center_x + x, center_y + y, color);
+            // draw_pixel(hwnd, center_x - x, center_y + y, color);
+            // draw_pixel(hwnd, center_x + x, center_y - y, color);
+            // draw_pixel(hwnd, center_x - x, center_y - y, color);
+            // draw_pixel(hwnd, center_x + y, center_y + x, color);
+            // draw_pixel(hwnd, center_x - y, center_y + x, color);
+            // draw_pixel(hwnd, center_x + y, center_y - x, color);
+            // draw_pixel(hwnd, center_x - y, center_y - x, color);
+            pixels[(center_y + y) * width + center_x + x] = color;
+            pixels[(center_y + y) * width + center_x - x] = color;
+            pixels[(center_y - y) * width + center_x + x] = color;
+            pixels[(center_y - y) * width + center_x - x] = color;
+
+            pixels[(center_y + x) * width + center_x + y] = color;
+            pixels[(center_y - x) * width + center_x + y] = color;
+            pixels[(center_y + x) * width + center_x - y] = color;
+            pixels[(center_y - x) * width + center_x - y] = color;
             x++;
         }
+        fill_area(pixels, hwnd);
     }
     else
     {
@@ -121,8 +186,18 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
     }
 }
 
-__declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, HWND hwnd, COLORREF color)
+__declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, COLORREF color)
 {
+    // for some reason a thickness of 3 draws a border of 2, 4 does 3, and so on, so just increase by 1
+    thickness++;
+    // get window dimensions
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+
+    radius -= thickness - 1;
     int radius_squared = radius * radius;
     for (int x = -radius; x < radius; x++)
     {
@@ -141,7 +216,10 @@ __declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, H
 
         for (int y = y_start; y < y_end; y++)
         {
-            draw_pixel(hwnd, rx, y, color);
+            // draw_pixel(hwnd, rx, y, color);
+            uint32_t col = 0xFFFF0000;
+            pixels[y * width + rx] = col;
         }
     }
+    fill_area(pixels, hwnd);
 }

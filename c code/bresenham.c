@@ -1,15 +1,55 @@
 #include <stdbool.h>
 #include <windows.h>
+#include <stdint.h>
 
-void draw_pixel(HWND hwnd, int x, int y, COLORREF color)
+void fill_area(uint32_t *pixels, HWND hwnd)
 {
+    // get window dimensions
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+
     HDC hdc = GetDC(hwnd);
-    SetPixel(hdc, x, y, color);
+    HDC memDC = CreateCompatibleDC(hdc);
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+    void *pBits = NULL;
+    HBITMAP hBitmap = CreateDIBSection(memDC, &bmi, DIB_RGB_COLORS, &pBits, NULL, 0);
+    HBITMAP oldMap = (HBITMAP)SelectObject(memDC, hBitmap);
+
+    memcpy(pBits, pixels, width * height * sizeof(uint32_t));
+
+    // paint bitmap onto window
+    BLENDFUNCTION blend = {0};
+    blend.BlendOp = AC_SRC_OVER;
+    blend.BlendFlags = 0;
+    blend.SourceConstantAlpha = 255;
+    blend.AlphaFormat = AC_SRC_ALPHA;
+
+    AlphaBlend(hdc, 0, 0, width, height, memDC, 0, 0, width, height, blend);
+
+    // cleanup
+    SelectObject(memDC, oldMap);
+    DeleteObject(hBitmap);
+    DeleteDC(memDC);
     ReleaseDC(hwnd, hdc);
 }
 
-__declspec(dllexport) void bresenham(int start_x, int start_y, int end_x, int end_y, int thickness, HWND hwnd, COLORREF color)
+__declspec(dllexport) void bresenham(int start_x, int start_y, int end_x, int end_y, int thickness, HWND hwnd, uint32_t color)
 {
+    RECT rect;
+    GetWindowRect(hwnd, &rect);
+    int width = rect.right - rect.left;
+    int height = rect.bottom - rect.top;
+    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+
     // define our dx, dy, and steps
     int dx = abs(end_x - start_x);
     int dy = abs(end_y - start_y);
@@ -41,17 +81,11 @@ __declspec(dllexport) void bresenham(int start_x, int start_y, int end_x, int en
         {
             if (steep)
             {
-                draw_pixel(hwnd, x + i, y, color);
-                // x_values[size] = x + i;
-                // y_values[size] = y;
-                // size++;
+                pixels[y * width + x + i] = color;
             }
             else
             {
-                draw_pixel(hwnd, x, y + i, color);
-                // x_values[size] = x;
-                // y_values[size] = y + i;
-                // size++;
+                pixels[(y + i) * width + x] = color;
             }
         }
 
@@ -72,4 +106,5 @@ __declspec(dllexport) void bresenham(int start_x, int start_y, int end_x, int en
             y += step_y;
         }
     }
+    fill_area(pixels, hwnd);
 }

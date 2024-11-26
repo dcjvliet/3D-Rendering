@@ -12,9 +12,11 @@ from typing import Union
 window_lib : ctypes.CDLL = ctypes.CDLL('./dlls/window.dll')
 window_lib.create_window.argtypes = [ctypes.POINTER(ctypes.c_char), ctypes.POINTER(ctypes.c_int)]
 window_lib.get_hwnd.argtypes = [ctypes.POINTER(ctypes.c_char)]
-window_lib.draw_pixel.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
+window_lib.draw_pixel.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_uint32]
 window_lib.fill_rect.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint]
 window_lib.kill_window.argtypes = [ctypes.c_void_p]
+window_lib.message_loop.argtypes = [ctypes.c_void_p]
+window_lib.fill_area.argtypes = [ctypes.POINTER(ctypes.c_uint32), ctypes.c_void_p, ctypes.c_uint]
 
 # ctype for creating the dimensions of the window
 DimensionsArray = ctypes.c_int * 2
@@ -26,7 +28,7 @@ bresenham.bresenham.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes
 # loading in the dll for midpoint circle algo
 midpoint_circle = ctypes.CDLL('./dlls/midpoint.dll')
 midpoint_circle.midpoint_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
-midpoint_circle.fill_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+midpoint_circle.fill_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
 def matrix_multiplication(matrix_one : Union[list[float], tuple[float]], matrix_two : Union[list[float], tuple[float]]) -> list[float]:
     """Returns the multiplication of two matrices
@@ -68,7 +70,7 @@ class NoValidHandle(CustomError):
 
 
 class Color:
-    """A color that is rgba compatible and can be used as a COLORREF object in C
+    """A color that is rgba compatible
     """
     def __init__(self, color : Union[tuple[int], list[int]]) -> None:
         """Initialize the color
@@ -95,14 +97,15 @@ class Color:
             self.g : int = color[1]
             self.b : int = color[2]
             self.a : int = color[3]
-            self.color : Color = color
-            self.colorref : ctypes.c_uint32 = self.generate_colorref(self.r, self.g, self.b)
+            col = (self.a << 24) | (self.r << 16) | (self.g << 8) | self.b
+            self.colorint = ctypes.c_uint32(col)
         else:
             self.r : int = color[0]
             self.g : int = color[1]
             self.b : int = color[2]
-            self.color : Color = color
-            self.colorref : ctypes.c_uint32 = self.generate_colorref(self.r, self.g, self.b)
+            self.a : int = 255
+            col = (self.a << 24) | (self.r << 16) | (self.g << 8) | self.b
+            self.colorint = ctypes.c_uint32(col)
 
     @classmethod
     # create the class from a hex code instead
@@ -117,7 +120,7 @@ class Color:
         if len(hex_code) != 8 and len(hex_code) != 6:
             raise ValueError('hex_code must be a rgb/rgba hex code')
         for char in hex_code:
-            if char.upper() not in set('0123456789ABCDEF'):
+            if char.upper() not in set('0123456789ABCDEF#'):
                 raise ValueError('Incompatible character(s) in hex_code')
         
         if len(hex_code) == 8:
@@ -127,32 +130,25 @@ class Color:
             a : int = int(hex_code[-2:], 16)
 
             return cls((r, g, b, a))
+        elif len(hex_code) == 9:
+            r : int = int(hex_code[1:3], 16)
+            g : int = int(hex_code[3:5], 16)
+            b : int = int(hex_code[5:7], 16)
+            a : int = int(hex_code[-2:], 16)
+
+            return cls((r, g, b, a))
+        elif len(hex_code) == 7:
+            r : int = int(hex_code[1:3], 16)
+            g : int = int(hex_code[3:5], 16)
+            b : int = int(hex_code[5:7], 16)
+            
+            return cls((r, g, b))
         else:
             r : int = int(hex_code[:2], 16)
             g : int = int(hex_code[2:4], 16)
             b : int = int(hex_code[-2:], 16)
 
             return cls((r, g, b))
-    
-    def generate_colorref(self, r : int, g : int, b : int, a : int = None) -> ctypes.c_uint32:
-        """Generate the COLORREF C object for the color
-
-        :param r: The r value of the color
-        :type r: int
-        :param g: The g value of the color
-        :type g: int
-        :param b: The b value of the color
-        :type b: int
-        :param a: The a value of the color, defaults to None
-        :type a: int, optional
-        :return: A hexadecimal representation of the color
-        :rtype: ctypes.c_uint32
-        """
-        # return an unsigned integer using some bit shifting
-        if a is None:
-            return ctypes.c_uint32((b << 16) | (g << 8) | r)
-        else:
-            return ctypes.c_uint32((b << 24) | (g << 16) | (r << 8) | a)
 
     def __str__(self) -> str:
         """Converts color to readable format to be printed
@@ -185,9 +181,9 @@ class Window:
         if self.hwnd == 0:
             raise NoValidHandle('No valid window handle could be found')
         self.background = background
-        window_lib.fill_rect(self.hwnd, 0, 0, self.width, self.height, self.background.colorref)
+        window_lib.fill_rect(self.hwnd, 0, 0, self.width, self.height, self.background.colorint)
 
-    def draw(self, coord : 'Coordinate', color : 'Color') -> None:
+    def draw(self, coord : 'Coordinate', color : Color) -> None:
         """Color the pixel at the given coordinate with the given color
 
         :param coord: The coordinate to be colored
@@ -195,13 +191,13 @@ class Window:
         :param color: The color of the pixel in rgb(a)
         :type color: Color
         """
-        window_lib.draw_pixel(self.hwnd, coord.x, coord.y, color.colorref)
+        window_lib.draw_pixel(self.hwnd, coord.x, coord.y, color.colorint)
 
     def mainloop(self) -> None:
         """Loop to run the window's message loop in C
         """
         # start the message loop
-        window_lib.message_loop()
+        window_lib.message_loop(self.hwnd)
 
     def kill(self) -> None:
         """Method to kill the window
@@ -284,23 +280,23 @@ class Line:
         """
         # just use the dll (C for the win (like 2x faster than python))
         if self.slope is not None and self.slope != 0:
-            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorref)
+            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.color.colorint)
         # if horizontal or vertical
         elif self.slope == 0:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.color.colorint)
         else:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.color.colorint)
 
     def undisplay(self) -> None:
         """Clear the line from its master
         """
         if self.slope is not None and self.slope != 0:
-            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.master.background.colorref)
+            bresenham.bresenham(self.start.x, self.start.y, self.end.x, self.end.y, self.width, self.master.hwnd, self.master.background.colorint)
         # in case it's a vertical/horizontal line
         elif self.slope == 0:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.master.background.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.end.x - self.start.x, self.width, self.master.background.colorint)
         else:
-            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.master.background.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.start.x, self.start.y, self.width, self.end.y - self.start.y, self.master.background.colorint)
 
     def rotate(self, theta : float, radians : bool = True, keep_original : bool = False, center : str = 'center') -> None:
         """Rotate the line by a given angle
@@ -429,11 +425,11 @@ class Rect:
         self.right_edge.display()
 
         # fill in bottom right corner
-        window_lib.fill_rect(self.master.hwnd, self.bottom_right.x, self.bottom_right.y, self.borderwidth, self.borderwidth, self.border_color.colorref)
+        window_lib.fill_rect(self.master.hwnd, self.bottom_right.x, self.bottom_right.y, self.borderwidth, self.borderwidth, self.border_color.colorint)
 
         # fill if needed
         if self.fill:
-            window_lib.fill_rect(self.master.hwnd, self.top_left.x + self.borderwidth, self.top_left.y + self.borderwidth, self.width - self.borderwidth, self.height - self.borderwidth, self.fill_color.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.top_left.x + self.borderwidth, self.top_left.y + self.borderwidth, self.width - self.borderwidth, self.height - self.borderwidth, self.fill_color.colorint)
 
     def change_fill(self) -> None:
         self.fill = not self.fill
@@ -451,7 +447,7 @@ class Rect:
             self.left_edge.undisplay()
             self.right_edge.undisplay()
             # also have to remove bottom right corner
-            window_lib.fill_rect(self.master.hwnd, self.bottom_right.x, self.bottom_right.y, self.borderwidth, self.borderwidth, self.master.background.colorref)
+            window_lib.fill_rect(self.master.hwnd, self.bottom_right.x, self.bottom_right.y, self.borderwidth, self.borderwidth, self.master.background.colorint)
             
         rotation_matrix : list = [
             [math.cos(theta), -math.sin(theta)], 
@@ -543,9 +539,9 @@ class Circle:
     def display(self) -> None:
         """Display the circle on its master
         """
-        midpoint_circle.midpoint_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.border_color.colorref)
+        midpoint_circle.midpoint_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.border_color.colorint)
         if self.fill:
-            midpoint_circle.fill_circle(self.center.x, self.center.y, self.radius, self.master.hwnd, self.fill_color.colorref)
+            midpoint_circle.fill_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.fill_color.colorint)
 
     def change_fill(self) -> None:
         """Change the fill of the circle
