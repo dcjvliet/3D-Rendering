@@ -2,8 +2,17 @@ This is still a **work in progress**. All code will be working, but some feature
 
 # TO-DO
 
+<<<<<<< HEAD
 - Add in antialiasing for lines (and other shapes)
 - Add in event like on click, scroll, keypress, etc.
 - Add in ability to load images
 - Add in ability to render text
 - Make fill function for circles faster
+=======
+- Add in circles and related methods
+  - Add in fill
+- Add in antialiasing for lines (and other shapes)
+- Add in event like on click, scroll, keypress, etc.
+- Add in ability to load images
+- Add in ability to load text
+>>>>>>> 9f901c5c169efe45cc5c09b404bcccd746f35b4c
