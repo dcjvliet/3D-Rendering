@@ -2,7 +2,6 @@ This is still a **work in progress**. All code will be working, but some feature
 
 # TO-DO
 
-- Add in antialiasing for lines (and other shapes)
 - Add in event like on click, scroll, keypress, etc.
 - Add in ability to load images
 - Add in ability to render text
