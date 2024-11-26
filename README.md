@@ -6,4 +6,3 @@ This is still a **work in progress**. All code will be working, but some feature
 - Add in event like on click, scroll, keypress, etc.
 - Add in ability to load images
 - Add in ability to render text
-- Make fill function for circles faster
