@@ -104,14 +104,6 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
                 determination += 8 * (x + y) + 4;
             }
 
-            // draw_pixel(hwnd, center_x + x, center_y + y, color);
-            // draw_pixel(hwnd, center_x - x, center_y + y, color);
-            // draw_pixel(hwnd, center_x + x, center_y - y, color);
-            // draw_pixel(hwnd, center_x - x, center_y - y, color);
-            // draw_pixel(hwnd, center_x + y, center_y + x, color);
-            // draw_pixel(hwnd, center_x - y, center_y + x, color);
-            // draw_pixel(hwnd, center_x + y, center_y - x, color);
-            // draw_pixel(hwnd, center_x - y, center_y - x, color);
             pixels[(center_y + y) * width + center_x + x] = color;
             pixels[(center_y + y) * width + center_x - x] = color;
             pixels[(center_y - y) * width + center_x + x] = color;
@@ -216,9 +208,7 @@ __declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, i
 
         for (int y = y_start; y < y_end; y++)
         {
-            // draw_pixel(hwnd, rx, y, color);
-            uint32_t col = 0xFFFF0000;
-            pixels[y * width + rx] = col;
+            pixels[y * width + rx] = color;
         }
     }
     fill_area(pixels, hwnd);
