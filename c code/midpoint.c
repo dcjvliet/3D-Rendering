@@ -42,34 +42,50 @@ void fill_area(uint32_t *pixels, HWND hwnd)
     ReleaseDC(hwnd, hdc);
 }
 
-void horizontal_line(int start_x, int end_x, int y, HWND hwnd, uint32_t color)
+uint32_t *horizontal_line(int start_x, int end_x, int y, int screen_width, int screen_height, uint32_t *pixels, uint32_t color)
 {
-    RECT rect;
-    GetWindowRect(hwnd, &rect);
-    int width = rect.right - rect.left;
-    int height = rect.bottom - rect.top;
-    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
+    if (y < 0 || y > screen_height)
+    {
+        return pixels;
+    }
+
+    if (start_x < 0)
+    {
+        start_x = 0;
+    }
+    if (end_x > screen_width)
+    {
+        end_x = screen_width;
+    }
 
     for (int x = start_x; x < end_x; x++)
     {
-        pixels[y * width + x] = color;
+        pixels[y * screen_width + x] = color;
     }
-    fill_area(pixels, hwnd);
+    return pixels;
 }
 
-void vertical_line(int x, int start_y, int end_y, HWND hwnd, uint32_t color)
+uint32_t *vertical_line(int x, int start_y, int end_y, int screen_width, int screen_height, uint32_t *pixels, uint32_t color)
 {
-    RECT rect;
-    GetWindowRect(hwnd, &rect);
-    int width = rect.right - rect.left;
-    int height = rect.bottom - rect.top;
-    uint32_t *pixels = (uint32_t *)malloc(width * height * sizeof(uint32_t));
-
-    for (int y = start_y; y < end_y; y++)
+    if (x < 0 || x > screen_width)
     {
-        pixels[y * width + x] = color;
+        return pixels;
     }
-    fill_area(pixels, hwnd);
+
+    if (start_y < 0)
+    {
+        start_y = 0;
+    }
+    if (end_y > screen_height)
+    {
+        end_y = screen_height;
+    }
+
+    for (int y = start_y; y <= end_y; y++)
+    {
+        pixels[y * screen_width + x] = color;
+    }
+    return pixels;
 }
 
 __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, uint32_t color)
@@ -130,21 +146,21 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
         while (y_outer >= x)
         {
             // octant 1
-            vertical_line(center_x + x, center_y - y_outer, center_y - y_inner, hwnd, color);
+            pixels = vertical_line(center_x + x, center_y - y_outer, center_y - y_inner, width, height, pixels, color);
             // octant 2
-            horizontal_line(center_x + y_inner, center_x + y_outer, center_y - x, hwnd, color);
+            pixels = horizontal_line(center_x + y_inner, center_x + y_outer, center_y - x, width, height, pixels, color);
             // octant 3
-            vertical_line(center_x + x, center_y + y_inner, center_y + y_outer, hwnd, color);
+            pixels = vertical_line(center_x + x, center_y + y_inner, center_y + y_outer, width, height, pixels, color);
             // octant 4
-            horizontal_line(center_x + y_inner, center_x + y_outer, center_y + x, hwnd, color);
+            pixels = horizontal_line(center_x + y_inner, center_x + y_outer, center_y + x, width, height, pixels, color);
             // octant 5
-            vertical_line(center_x - x, center_y + y_inner, center_y + y_outer, hwnd, color);
+            pixels = vertical_line(center_x - x, center_y + y_inner, center_y + y_outer, width, height, pixels, color);
             // octant 6
-            horizontal_line(center_x - y_outer, center_x - y_inner, center_y + x, hwnd, color);
+            pixels = horizontal_line(center_x - y_outer, center_x - y_inner, center_y + x, width, height, pixels, color);
             // octant 7
-            horizontal_line(center_x - y_outer, center_x - y_inner, center_y - x, hwnd, color);
+            pixels = horizontal_line(center_x - y_outer, center_x - y_inner, center_y - x, width, height, pixels, color);
             // octant 8
-            vertical_line(center_x - x, center_y - y_outer, center_y - y_inner, hwnd, color);
+            pixels = vertical_line(center_x - x, center_y - y_outer, center_y - y_inner, width, height, pixels, color);
 
             x++;
 
@@ -175,10 +191,11 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
                 }
             }
         }
+        fill_area(pixels, hwnd);
     }
 }
 
-__declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, COLORREF color)
+__declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, int thickness, HWND hwnd, uint32_t color)
 {
     // for some reason a thickness of 3 draws a border of 2, 4 does 3, and so on, so just increase by 1
     thickness++;
