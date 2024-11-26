@@ -541,6 +541,8 @@ class Circle:
         self.fill_color : Color = fill_color
 
     def display(self) -> None:
+        """Display the circle on its master
+        """
         midpoint_circle.midpoint_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.border_color.colorref)
         if self.fill:
             midpoint_circle.fill_circle(self.center.x, self.center.y, self.radius, self.master.hwnd, self.fill_color.colorref)
