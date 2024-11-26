@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <math.h>
 
 void draw_pixel(HWND hwnd, int x, int y, COLORREF color)
 {
@@ -116,6 +117,31 @@ __declspec(dllexport) void midpoint_circle(int center_x, int center_y, int radiu
                     determination_inner += 8 * (x - y_inner) + 4;
                 }
             }
+        }
+    }
+}
+
+__declspec(dllexport) void fill_circle(int center_x, int center_y, int radius, HWND hwnd, COLORREF color)
+{
+    int radius_squared = radius * radius;
+    for (int x = -radius; x < radius; x++)
+    {
+        // find vertical range
+        int hh = (int)sqrt(radius_squared - x * x);
+        // relative x
+        int rx = center_x + x;
+
+        // find y bounds
+        int y_start = center_y - hh;
+        int y_end = center_y + hh;
+        if (y_start < 0)
+        {
+            y_start = 0;
+        }
+
+        for (int y = y_start; y < y_end; y++)
+        {
+            draw_pixel(hwnd, rx, y, color);
         }
     }
 }

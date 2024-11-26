@@ -26,6 +26,7 @@ bresenham.bresenham.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes
 # loading in the dll for midpoint circle algo
 midpoint_circle = ctypes.CDLL('./dlls/midpoint.dll')
 midpoint_circle.midpoint_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
+midpoint_circle.fill_circle.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_void_p, ctypes.c_uint]
 
 def matrix_multiplication(matrix_one : Union[list[float], tuple[float]], matrix_two : Union[list[float], tuple[float]]) -> list[float]:
     """Returns the multiplication of two matrices
@@ -436,6 +437,7 @@ class Rect:
 
     def change_fill(self) -> None:
         self.fill = not self.fill
+        self.display()
 
     def rotate(self, theta : float, radians : bool = True, keep_original : bool = False) -> None:
         # convert to radians if it's in degrees
@@ -536,14 +538,18 @@ class Circle:
         self.border_color : Color = border_color
         self.borderwidth : int = borderwidth
         self.fill : bool = fill
+        self.fill_color : Color = fill_color
 
     def display(self) -> None:
         midpoint_circle.midpoint_circle(self.center.x, self.center.y, self.radius, self.borderwidth, self.master.hwnd, self.border_color.colorref)
+        if self.fill:
+            midpoint_circle.fill_circle(self.center.x, self.center.y, self.radius, self.master.hwnd, self.fill_color.colorref)
 
     def change_fill(self) -> None:
         """Change the fill of the circle
         """
         self.fill = not self.fill
+        self.display()
 
     def __str__(self) -> str:
         """Converts the circle to a readable format
